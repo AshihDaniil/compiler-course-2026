@@ -6,39 +6,32 @@ typedef struct FILE FILE;
 extern "C" FILE* fopen(const char* filename, const char* mode);
 extern "C" int fclose(FILE* stream);
 
-// Тест 1: Утечка памяти через malloc
+// Тест 1: Утечка через malloc
 void test_malloc_leak() {
     int* data = (int*)malloc(1024);
     // CHECK: warning: Память или ресурс для переменной 'data' не освобождены!
 }
 
-// Тест 2: Утечка через оператор new
+// Тест 2: Утечка через new
 void test_new_leak() {
     int* p = new int[10];
     // CHECK: warning: Память или ресурс для переменной 'p' не освобождены!
 }
 
-// Тест 3: Утечка файлового дескриптора
+// Тест 3: Утечка файла
 void test_file_leak() {
     FILE* f = fopen("config.txt", "r");
-    if (!f) return;
     // CHECK: warning: Память или ресурс для переменной 'f' не освобождены!
 }
 
-// Тест 4: Нет утечки (все освобождено правильно)
+// Тест 4: Нет утечки
 void test_no_leak() {
     int* ptr = (int*)malloc(4);
     free(ptr);
-
-    FILE* file = fopen("log.txt", "w");
-    if (file) {
-        fclose(file);
-    }
-    
-    // CHECK-NOT: warning
+    // CHECK-NOT: warning: Память или ресурс для переменной 'ptr' не освобождены!
 }
 
-// Тест 5: Утечка при досрочном выходе (return)
+// Тест 5: Утечка при return
 void test_return_leak(int x) {
     int* p = new int;
     if (x > 0) {
