@@ -111,12 +111,20 @@ private:
   void ReportWarning(const VarDecl *VD, bool IsEarlyReturn,
                      SourceLocation Loc) {
     DiagnosticsEngine &DE = Context->getDiagnostics();
-    unsigned DiagID = DE.getCustomDiagID(
-        DiagnosticsEngine::Warning,
-        IsEarlyReturn
-            ? "Ресурс для переменной '%0' может быть не освобожден (не "
-              "гарантированное освобождение при return)!"
-            : "Память или ресурс для переменной '%0' не освобождены!");
+    unsigned DiagID;
+
+    // Используем if-else вместо тернарного оператора, чтобы избежать ошибки
+    // вывода типов шаблона
+    if (IsEarlyReturn) {
+      DiagID = DE.getCustomDiagID(
+          DiagnosticsEngine::Warning,
+          "Ресурс для переменной '%0' может быть не освобожден (не "
+          "гарантированное освобождение при return)!");
+    } else {
+      DiagID = DE.getCustomDiagID(
+          DiagnosticsEngine::Warning,
+          "Память или ресурс для переменной '%0' не освобождены!");
+    }
 
     DE.Report(Loc, DiagID) << VD->getNameAsString();
   }
