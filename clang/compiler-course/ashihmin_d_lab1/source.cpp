@@ -22,7 +22,7 @@ public:
       TraverseStmt(D->getBody());
       ReportFinalLeaks();
     }
-    return true; // Возвращаем true, чтобы продолжить обход других функций в TU
+    return false;
   }
 
   // int* p = malloc(10);
@@ -76,7 +76,6 @@ public:
 private:
   ASTContext *Context;
   // Карта: какая переменная владеет ресурсом -> где этот ресурс был выделен
-  // (Loc)
   std::map<const VarDecl *, SourceLocation> AllocatedResources;
 
   // Проверяем, является ли выражение выделением ресурса malloc/fopen/new
@@ -96,7 +95,7 @@ private:
 
   // Для получения переменной из выражения (p, (p), *&p и т.д.)
   const VarDecl *GetVarDeclFromExpr(const Expr *E) {
-    E = E->IgnoreParenCasts(); // Тоже меняем здесь
+    E = E->IgnoreParenCasts();
     if (auto *DRE = dyn_cast<DeclRefExpr>(E))
       return dyn_cast<VarDecl>(DRE->getDecl());
     return nullptr;
@@ -115,8 +114,6 @@ private:
     DiagnosticsEngine &DE = Context->getDiagnostics();
     unsigned DiagID;
 
-    // Используем if-else вместо тернарного оператора, чтобы избежать ошибки
-    // вывода типов шаблона
     if (IsEarlyReturn) {
       DiagID = DE.getCustomDiagID(
           DiagnosticsEngine::Warning,
