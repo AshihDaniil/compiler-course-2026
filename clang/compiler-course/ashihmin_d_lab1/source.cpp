@@ -51,7 +51,7 @@ public:
   }
 
   bool VisitReturnStmt(ReturnStmt *RS) {
-    for (auto const& [VD, Loc] : Allocated) {
+    for (auto const &[VD, Loc] : Allocated) {
       if (Freed.count(VD) == 0 && Reported.count(VD) == 0) {
         Report(VD, RS->getReturnLoc(), true);
         Reported.insert(VD);
@@ -61,7 +61,7 @@ public:
   }
 
   void FinalReport() {
-    for (auto const& [VD, Loc] : Allocated) {
+    for (auto const &[VD, Loc] : Allocated) {
       if (Freed.count(VD) == 0 && Reported.count(VD) == 0) {
         Report(VD, VD->getLocation(), false);
         Reported.insert(VD);
@@ -73,12 +73,14 @@ private:
   ASTContext *Context;
   std::map<const VarDecl *, SourceLocation> Allocated;
   std::set<const VarDecl *> Freed;
-  std::set<const VarDecl *> Reported; 
+  std::set<const VarDecl *> Reported;
 
   bool isAllocation(Expr *E) {
-    if (!E) return false;
+    if (!E)
+      return false;
     E = E->IgnoreParenCasts();
-    if (isa<CXXNewExpr>(E)) return true;
+    if (isa<CXXNewExpr>(E))
+      return true;
     if (auto *CE = dyn_cast<CallExpr>(E)) {
       if (auto *FD = CE->getDirectCallee()) {
         std::string Name = FD->getNameAsString();
@@ -89,7 +91,8 @@ private:
   }
 
   VarDecl *getVarDecl(Expr *E) {
-    if (!E) return nullptr;
+    if (!E)
+      return nullptr;
     E = E->IgnoreParenCasts();
     if (auto *DRE = dyn_cast<DeclRefExpr>(E))
       return dyn_cast<VarDecl>(DRE->getDecl());
@@ -98,9 +101,11 @@ private:
 
   void Report(const VarDecl *VD, SourceLocation Loc, bool IsReturn) {
     DiagnosticsEngine &DE = Context->getDiagnostics();
-    unsigned DiagID = DE.getCustomDiagID(DiagnosticsEngine::Warning,
-      IsReturn ? "Ресурс для переменной '%0' может быть не освобожден (не гарантированное освобождение при return)!"
-               : "Память или ресурс для переменной '%0' не освобождены!");
+    unsigned DiagID = DE.getCustomDiagID(
+        DiagnosticsEngine::Warning,
+        IsReturn ? "Ресурс для переменной '%0' может быть не освобожден (не "
+                   "гарантированное освобождение при return)!"
+                 : "Память или ресурс для переменной '%0' не освобождены!");
     DE.Report(Loc, DiagID) << VD->getNameAsString();
   }
 };
@@ -116,10 +121,14 @@ public:
 
 class ResourceLeakAction : public PluginASTAction {
 public:
-  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI, StringRef) override {
+  std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
+                                                 StringRef) override {
     return std::make_unique<ResourceLeakConsumer>();
   }
-  bool ParseArgs(const CompilerInstance &, const std::vector<std::string> &) override { return true; }
+  bool ParseArgs(const CompilerInstance &,
+                 const std::vector<std::string> &) override {
+    return true;
+  }
 };
 
 } // namespace
