@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -load %llvmshlibdir/libashihmin_d_lab1_ClangAST%pluginext -plugin ashihmin_d_analizator -fsyntax-only -verify %s
+// RUN: %clang_cc1 -load %llvmshlibdir/ashihmin_d_lab1_ClangAST%pluginext -plugin ashihmin_d_analizator -fsyntax-only -verify %s
 
 extern "C" void* malloc(unsigned long size);
 extern "C" void free(void* ptr);
