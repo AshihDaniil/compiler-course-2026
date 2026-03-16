@@ -22,7 +22,7 @@ public:
       TraverseStmt(D->getBody());
       ReportFinalLeaks();
     }
-    return true;
+    return true; // Возвращаем true, чтобы продолжить обход других функций в TU
   }
 
   // int* p = malloc(10);
@@ -76,11 +76,13 @@ public:
 private:
   ASTContext *Context;
   // Карта: какая переменная владеет ресурсом -> где этот ресурс был выделен
+  // (Loc)
   std::map<const VarDecl *, SourceLocation> AllocatedResources;
 
   // Проверяем, является ли выражение выделением ресурса malloc/fopen/new
   void CheckAllocation(const VarDecl *VD, const Expr *E) {
-    E = E->IgnoreParenImpCasts();
+    // ВАЖНО: Используем IgnoreParenCasts, чтобы видеть сквозь (int*)malloc
+    E = E->IgnoreParenCasts();
     if (isa<CXXNewExpr>(E)) {
       AllocatedResources[VD] = VD->getLocation();
     } else if (auto *CE = dyn_cast<CallExpr>(E)) {
@@ -94,7 +96,7 @@ private:
 
   // Для получения переменной из выражения (p, (p), *&p и т.д.)
   const VarDecl *GetVarDeclFromExpr(const Expr *E) {
-    E = E->IgnoreParenImpCasts();
+    E = E->IgnoreParenCasts(); // Тоже меняем здесь
     if (auto *DRE = dyn_cast<DeclRefExpr>(E))
       return dyn_cast<VarDecl>(DRE->getDecl());
     return nullptr;

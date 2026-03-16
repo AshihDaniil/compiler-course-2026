@@ -21,10 +21,10 @@ void test_file_leak() {
 void test_no_leak() {
     int* ptr = (int*)malloc(4);
     free(ptr);
-} // expected-no-diagnostics
+}
 
 void test_return_leak(int x) {
-    int* p = new int; 
+    int* p = new int;
     if (x > 0) {
         return; // expected-warning {{Ресурс для переменной 'p' может быть не освобожден (не гарантированное освобождение при return)!}}
     }
