@@ -22,7 +22,7 @@ public:
       TraverseStmt(D->getBody());
       ReportFinalLeaks();
     }
-    return false;
+    return true;
   }
 
   // int* p = malloc(10);
@@ -43,7 +43,7 @@ public:
     return true;
   }
 
-  // Поиск освобождения и обработки RETURN
+  // Проверка освобождения и RETURN
   bool VisitStmt(Stmt *S) {
     if (!S)
       return true;
@@ -66,7 +66,7 @@ public:
     // Проверка return
     else if (auto *RS = dyn_cast<ReturnStmt>(S)) {
       for (auto const &[VD, Loc] : AllocatedResources) {
-        ReportWarning(VD, true);
+        ReportWarning(VD, true, RS->getBeginLoc());
       }
       AllocatedResources.clear();
     }
@@ -81,7 +81,6 @@ private:
   // Проверяем, является ли выражение выделением ресурса malloc/fopen/new
   void CheckAllocation(const VarDecl *VD, const Expr *E) {
     E = E->IgnoreParenImpCasts();
-
     if (isa<CXXNewExpr>(E)) {
       AllocatedResources[VD] = VD->getLocation();
     } else if (auto *CE = dyn_cast<CallExpr>(E)) {
@@ -104,26 +103,22 @@ private:
   // Формируем и выводим предупреждение
   void ReportFinalLeaks() {
     for (auto const &[VD, Loc] : AllocatedResources) {
-      ReportWarning(VD, false);
+      ReportWarning(VD, false, VD->getLocation());
     }
     AllocatedResources.clear();
   }
 
-  void ReportWarning(const VarDecl *VD, bool IsEarlyReturn) {
+  void ReportWarning(const VarDecl *VD, bool IsEarlyReturn,
+                     SourceLocation Loc) {
     DiagnosticsEngine &DE = Context->getDiagnostics();
-    unsigned DiagID;
+    unsigned DiagID = DE.getCustomDiagID(
+        DiagnosticsEngine::Warning,
+        IsEarlyReturn
+            ? "Ресурс для переменной '%0' может быть не освобожден (не "
+              "гарантированное освобождение при return)!"
+            : "Память или ресурс для переменной '%0' не освобождены!");
 
-    if (IsEarlyReturn) {
-      DiagID = DE.getCustomDiagID(
-          DiagnosticsEngine::Warning,
-          "Ресурс для переменной '%0' может быть не освобожден (не "
-          "гарантированное освобождение при return)!");
-    } else {
-      DiagID = DE.getCustomDiagID(
-          DiagnosticsEngine::Warning,
-          "Память или ресурс для переменной '%0' не освобождены!");
-    }
-    DE.Report(VD->getLocation(), DiagID) << VD->getNameAsString();
+    DE.Report(Loc, DiagID) << VD->getNameAsString();
   }
 };
 
@@ -150,4 +145,4 @@ public:
 } // namespace
 
 static FrontendPluginRegistry::Add<ResourceLeakAction>
-    X("ashihmin_d_analizator", "Leak detector");
+    X("ashihmin_d_analizator", "Leak detector plugin");
