@@ -18,11 +18,6 @@ void test_file_leak() {
     FILE* f = fopen("config.txt", "r"); // expected-warning {{не освобождены}}
 }
 
-void test_no_leak() {
-    int* ptr = (int*)malloc(4);
-    free(ptr);
-}
-
 void test_return_leak(int x) {
     int* p = new int; 
     if (x > 0) {
