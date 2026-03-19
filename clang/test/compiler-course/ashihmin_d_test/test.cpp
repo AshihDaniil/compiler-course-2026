@@ -30,3 +30,36 @@ void test_return_leak(int x) {
     }
     delete p;
 }
+
+//added
+
+void test_clean_malloc() {
+    int* p = (int*)malloc(64);
+    free(p);
+}
+
+void test_clean_new() {
+    int* a = new int;
+    delete a;
+}
+
+void test_clean_fopen() {
+    FILE* f = fopen("test.txt", "r");
+    if (f) {
+        fclose(f);
+    }
+}
+
+void test_clean_reassign() {
+    int* p = (int*)malloc(10);
+    free(p);
+    p = (int*)malloc(20);
+    free(p);
+}
+
+void test_clean_nested() {
+    {
+        int* d = (int*)malloc(8);
+        free(d);
+    }
+}
