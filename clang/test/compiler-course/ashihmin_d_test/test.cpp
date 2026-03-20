@@ -1,10 +1,12 @@
-// RUN: %clang_cc1 -load %llvmshlibdir/ashihmin_d_lab1_ClangAST%pluginext -plugin ashihmin_d_analizator -fsyntax-only -verify %s
+// RUN: split-file %s %t
+// RUN: %clang_cc1 -load %llvmshlibdir/ashihmin_d_lab1_ClangAST%pluginext -plugin ashihmin_d_analizator -fsyntax-only -verify %t/leaks.cpp
+// RUN: %clang_cc1 -load %llvmshlibdir/ashihmin_d_lab1_ClangAST%pluginext -plugin ashihmin_d_analizator -fsyntax-only -verify %t/clean.cpp
 
-extern "C" void* malloc(unsigned long size);
-extern "C" void free(void* ptr);
-typedef struct FILE FILE;
-extern "C" FILE* fopen(const char* filename, const char* mode);
-extern "C" int fclose(FILE* stream);
+//--- leaks.cpp
+extern "C" {
+    void* malloc(unsigned long size);
+    void* fopen(const char* filename, const char* mode);
+}
 
 void test_malloc_leak() {
     int* data = (int*)malloc(1024); // expected-warning {{не освобождены}}
@@ -15,7 +17,7 @@ void test_new_leak() {
 }
 
 void test_file_leak() {
-    FILE* f = fopen("config.txt", "r"); // expected-warning {{не освобождены}}
+    void* f = fopen("config.txt", "r"); // expected-warning {{не освобождены}}
 }
 
 void test_return_leak(int x) {
@@ -26,7 +28,17 @@ void test_return_leak(int x) {
     delete p;
 }
 
-//added
+
+//--- clean.cpp
+// expected-no-diagnostics
+
+extern "C" {
+    void* malloc(unsigned long size);
+    void free(void* ptr);
+    typedef struct FILE FILE;
+    FILE* fopen(const char* filename, const char* mode);
+    int fclose(FILE* stream);
+}
 
 void test_clean_malloc() {
     int* p = (int*)malloc(64);
