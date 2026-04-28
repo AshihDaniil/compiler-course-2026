@@ -20,17 +20,59 @@ public:
   }
 
 private:
-  bool getIncDecInfo(unsigned Opcode, int &Delta, unsigned &AddOp, unsigned &SubOp, unsigned &RegSize) const {
+  bool getIncDecInfo(unsigned Opcode, int &Delta, unsigned &AddOp,
+                     unsigned &SubOp, unsigned &RegSize) const {
     switch (Opcode) {
-      case X86::INC8r:  Delta = 1;  AddOp = X86::ADD8ri;  SubOp = X86::SUB8ri;  RegSize = 8;  return true;
-      case X86::INC16r: Delta = 1;  AddOp = X86::ADD16ri; SubOp = X86::SUB16ri; RegSize = 16; return true;
-      case X86::INC32r: Delta = 1;  AddOp = X86::ADD32ri; SubOp = X86::SUB32ri; RegSize = 32; return true;
-      case X86::INC64r: Delta = 1;  AddOp = X86::ADD64ri32; SubOp = X86::SUB64ri32; RegSize = 64; return true;
-      case X86::DEC8r:  Delta = -1; AddOp = X86::ADD8ri;  SubOp = X86::SUB8ri;  RegSize = 8;  return true;
-      case X86::DEC16r: Delta = -1; AddOp = X86::ADD16ri; SubOp = X86::SUB16ri; RegSize = 16; return true;
-      case X86::DEC32r: Delta = -1; AddOp = X86::ADD32ri; SubOp = X86::SUB32ri; RegSize = 32; return true;
-      case X86::DEC64r: Delta = -1; AddOp = X86::ADD64ri32; SubOp = X86::SUB64ri32; RegSize = 64; return true;
-      default: return false;
+    case X86::INC8r:
+      Delta = 1;
+      AddOp = X86::ADD8ri;
+      SubOp = X86::SUB8ri;
+      RegSize = 8;
+      return true;
+    case X86::INC16r:
+      Delta = 1;
+      AddOp = X86::ADD16ri;
+      SubOp = X86::SUB16ri;
+      RegSize = 16;
+      return true;
+    case X86::INC32r:
+      Delta = 1;
+      AddOp = X86::ADD32ri;
+      SubOp = X86::SUB32ri;
+      RegSize = 32;
+      return true;
+    case X86::INC64r:
+      Delta = 1;
+      AddOp = X86::ADD64ri32;
+      SubOp = X86::SUB64ri32;
+      RegSize = 64;
+      return true;
+    case X86::DEC8r:
+      Delta = -1;
+      AddOp = X86::ADD8ri;
+      SubOp = X86::SUB8ri;
+      RegSize = 8;
+      return true;
+    case X86::DEC16r:
+      Delta = -1;
+      AddOp = X86::ADD16ri;
+      SubOp = X86::SUB16ri;
+      RegSize = 16;
+      return true;
+    case X86::DEC32r:
+      Delta = -1;
+      AddOp = X86::ADD32ri;
+      SubOp = X86::SUB32ri;
+      RegSize = 32;
+      return true;
+    case X86::DEC64r:
+      Delta = -1;
+      AddOp = X86::ADD64ri32;
+      SubOp = X86::SUB64ri32;
+      RegSize = 64;
+      return true;
+    default:
+      return false;
     }
   }
 };
@@ -55,7 +97,7 @@ bool ashihmin_d_lab3::runOnMachineFunction(MachineFunction &MF) {
       Register Reg = MI->getOperand(0).getReg();
       DebugLoc DL = MI->getDebugLoc();
       auto FirstMI = MI;
-      
+
       int TotalDelta = 0;
       SmallVector<MachineInstr *, 4> ToErase;
 
@@ -81,7 +123,7 @@ bool ashihmin_d_lab3::runOnMachineFunction(MachineFunction &MF) {
               .addReg(Reg)
               .addImm(FinalImm);
         }
-        
+
         for (auto *Inst : ToErase) {
           Inst->eraseFromParent();
         }
@@ -94,4 +136,5 @@ bool ashihmin_d_lab3::runOnMachineFunction(MachineFunction &MF) {
 
 } // namespace
 
-static RegisterPass<ashihmin_d_lab3> X("ashihmin_d_lab3", "ashihmin_d_lab3 pass", false, false);
+static RegisterPass<ashihmin_d_lab3> X("ashihmin_d_lab3",
+                                       "ashihmin_d_lab3 pass", false, false);
