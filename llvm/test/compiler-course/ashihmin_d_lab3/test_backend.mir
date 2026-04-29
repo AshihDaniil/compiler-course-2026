@@ -14,7 +14,7 @@ body:             |
     $eax = INC32r $eax, implicit-def dead $eflags, implicit $eax
     $eax = INC32r $eax, implicit-def dead $eflags, implicit $eax
     RET64 $eax
-...
+
 ---
 name:            check_reduction_64
 tracksRegLiveness: true
@@ -28,7 +28,7 @@ body:             |
     $rax = DEC64r $rax, implicit-def dead $eflags, implicit $rax
     $rax = DEC64r $rax, implicit-def dead $eflags, implicit $rax
     RET64 $rax
-...
+
 ---
 name:            check_cancellation
 tracksRegLiveness: true
@@ -42,7 +42,7 @@ body:             |
     $edi = INC32r $edi, implicit-def dead $eflags, implicit $edi
     $edi = DEC32r $edi, implicit-def dead $eflags, implicit $edi
     RET64 $edi
-...
+
 ---
 name:            check_mixed_math
 tracksRegLiveness: true
@@ -56,7 +56,7 @@ body:             |
     $edx = INC32r $edx, implicit-def dead $eflags, implicit $edx
     $edx = DEC32r $edx, implicit-def dead $eflags, implicit $edx
     RET64 $edx
-...
+
 ---
 name:            check_byte_regs
 tracksRegLiveness: true
@@ -68,7 +68,7 @@ body:             |
     $al = DEC8r $al, implicit-def dead $eflags, implicit $al
     $al = DEC8r $al, implicit-def dead $eflags, implicit $al
     RET64 $al
-...
+
 ---
 name:            check_interleaved_registers
 tracksRegLiveness: true
@@ -83,4 +83,3 @@ body:             |
     $ebx = DEC32r $ebx, implicit-def dead $eflags, implicit $ebx
     $ebx = DEC32r $ebx, implicit-def dead $eflags, implicit $ebx
     RET64 $eax
-...
