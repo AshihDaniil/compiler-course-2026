@@ -13,128 +13,89 @@ public:
   static char ID;
   ashihmin_d_lab3() : MachineFunctionPass(ID) {}
 
-  bool runOnMachineFunction(MachineFunction &MF) override;
-
   StringRef getPassName() const override {
-    return "ashihmin_d_lab3: INC/DEC to ADD/SUB merger";
+    return "Ashihmin D. Lab3: INC/DEC to ADD/SUB Merger";
+  }
+
+  bool runOnMachineFunction(MachineFunction &MF) override {
+    const X86InstrInfo *X86TII = MF.getSubtarget<X86Subtarget>().getInstrInfo();
+    bool IsModified = false;
+
+    for (auto &MBB : MF) {
+      auto MII = MBB.begin();
+      while (MII != MBB.end()) {
+        int DeltaAccum = 0;
+        unsigned AddOp, SubOp, RegWidth;
+
+        // Проверяем, является ли инструкция таргетом для замены
+        if (!lookupOpcodeInfo(MII->getOpcode(), DeltaAccum, AddOp, SubOp, RegWidth)) {
+          ++MII;
+          continue;
+        }
+
+        Register CurrentReg = MII->getOperand(0).getReg();
+        DebugLoc DL = MII->getDebugLoc();
+        auto SequenceHead = MII;
+        
+        SmallVector<MachineInstr *, 8> SequenceToProcess;
+        int TotalSum = 0;
+
+        // Собираем все идущие подряд INC/DEC для этого же регистра
+        while (MII != MBB.end()) {
+          int LocalVal = 0;
+          unsigned TmpA, TmpS, TmpW;
+          if (lookupOpcodeInfo(MII->getOpcode(), LocalVal, TmpA, TmpS, TmpW) &&
+              MII->getOperand(0).getReg() == CurrentReg && TmpW == RegWidth) {
+            
+            TotalSum += LocalVal;
+            SequenceToProcess.push_back(&*MII);
+            ++MII;
+          } else {
+            break;
+          }
+        }
+
+        if (!SequenceToProcess.empty()) {
+          // Если после сложения (например, INC и DEC) получили не ноль
+          if (TotalSum != 0) {
+            unsigned FinalOpcode = (TotalSum > 0) ? AddOp : SubOp;
+            uint64_t Immediate = std::abs(TotalSum);
+
+            BuildMI(MBB, SequenceHead, DL, X86TII->get(FinalOpcode), CurrentReg)
+                .addReg(CurrentReg)
+                .addImm(Immediate)
+                .addReg(X86::EFLAGS, RegState::Define | RegState::Implicit);
+          }
+          
+          // Удаляем старые инструкции в любом случае (даже если TotalSum == 0)
+          for (auto *Inst : SequenceToProcess) {
+            Inst->eraseFromParent();
+          }
+          IsModified = true;
+        }
+      }
+    }
+    return IsModified;
   }
 
 private:
-  bool getIncDecInfo(unsigned Opcode, int &Delta, unsigned &AddOp,
-                     unsigned &SubOp, unsigned &RegSize) const {
-    switch (Opcode) {
-    case X86::INC8r:
-      Delta = 1;
-      AddOp = X86::ADD8ri;
-      SubOp = X86::SUB8ri;
-      RegSize = 8;
-      return true;
-    case X86::INC16r:
-      Delta = 1;
-      AddOp = X86::ADD16ri;
-      SubOp = X86::SUB16ri;
-      RegSize = 16;
-      return true;
-    case X86::INC32r:
-      Delta = 1;
-      AddOp = X86::ADD32ri;
-      SubOp = X86::SUB32ri;
-      RegSize = 32;
-      return true;
-    case X86::INC64r:
-      Delta = 1;
-      AddOp = X86::ADD64ri32;
-      SubOp = X86::SUB64ri32;
-      RegSize = 64;
-      return true;
-    case X86::DEC8r:
-      Delta = -1;
-      AddOp = X86::ADD8ri;
-      SubOp = X86::SUB8ri;
-      RegSize = 8;
-      return true;
-    case X86::DEC16r:
-      Delta = -1;
-      AddOp = X86::ADD16ri;
-      SubOp = X86::SUB16ri;
-      RegSize = 16;
-      return true;
-    case X86::DEC32r:
-      Delta = -1;
-      AddOp = X86::ADD32ri;
-      SubOp = X86::SUB32ri;
-      RegSize = 32;
-      return true;
-    case X86::DEC64r:
-      Delta = -1;
-      AddOp = X86::ADD64ri32;
-      SubOp = X86::SUB64ri32;
-      RegSize = 64;
-      return true;
-    default:
-      return false;
+  // Маппинг инструкций X86
+  bool lookupOpcodeInfo(unsigned Op, int &Val, unsigned &A, unsigned &S, unsigned &W) const {
+    switch (Op) {
+      case X86::INC8r:  Val = 1;  A = X86::ADD8ri;  S = X86::SUB8ri;  W = 8;  return true;
+      case X86::DEC8r:  Val = -1; A = X86::ADD8ri;  S = X86::SUB8ri;  W = 8;  return true;
+      case X86::INC16r: Val = 1;  A = X86::ADD16ri; S = X86::SUB16ri; W = 16; return true;
+      case X86::DEC16r: Val = -1; A = X86::ADD16ri; S = X86::SUB16ri; W = 16; return true;
+      case X86::INC32r: Val = 1;  A = X86::ADD32ri; S = X86::SUB32ri; W = 32; return true;
+      case X86::DEC32r: Val = -1; A = X86::ADD32ri; S = X86::SUB32ri; W = 32; return true;
+      case X86::INC64r: Val = 1;  A = X86::ADD64ri32; S = X86::SUB64ri32; W = 64; return true;
+      case X86::DEC64r: Val = -1; A = X86::ADD64ri32; S = X86::SUB64ri32; W = 64; return true;
+      default: return false;
     }
   }
 };
 
 char ashihmin_d_lab3::ID = 0;
-
-bool ashihmin_d_lab3::runOnMachineFunction(MachineFunction &MF) {
-  const X86InstrInfo *TII = MF.getSubtarget<X86Subtarget>().getInstrInfo();
-  bool Changed = false;
-
-  for (MachineBasicBlock &MBB : MF) {
-    auto MI = MBB.begin();
-    while (MI != MBB.end()) {
-      int Delta = 0;
-      unsigned AddOp, SubOp, RegSize;
-
-      if (!getIncDecInfo(MI->getOpcode(), Delta, AddOp, SubOp, RegSize)) {
-        ++MI;
-        continue;
-      }
-
-      Register Reg = MI->getOperand(0).getReg();
-      DebugLoc DL = MI->getDebugLoc();
-      auto FirstMI = MI;
-
-      int TotalDelta = 0;
-      SmallVector<MachineInstr *, 4> ToErase;
-
-      while (MI != MBB.end()) {
-        int CurDelta = 0;
-        unsigned CurAdd, CurSub, CurSize;
-        if (getIncDecInfo(MI->getOpcode(), CurDelta, CurAdd, CurSub, CurSize) &&
-            MI->getOperand(0).getReg() == Reg && CurSize == RegSize) {
-          TotalDelta += CurDelta;
-          ToErase.push_back(&*MI);
-          ++MI;
-        } else {
-          break;
-        }
-      }
-
-      if (!ToErase.empty()) {
-        if (TotalDelta != 0) {
-          unsigned FinalOp = (TotalDelta > 0) ? AddOp : SubOp;
-          int FinalImm = std::abs(TotalDelta);
-
-          BuildMI(MBB, FirstMI, DL, TII->get(FinalOp), Reg)
-              .addReg(Reg)
-              .addImm(FinalImm);
-        }
-
-        for (auto *Inst : ToErase) {
-          Inst->eraseFromParent();
-        }
-        Changed = true;
-      }
-    }
-  }
-  return Changed;
-}
-
 } // namespace
 
-static RegisterPass<ashihmin_d_lab3> X("ashihmin_d_lab3",
-                                       "ashihmin_d_lab3 pass", false, false);
+static RegisterPass<ashihmin_d_lab3> X("ashihmin_d_lab3", "ashihmin_d_lab3 pass", false, false);
