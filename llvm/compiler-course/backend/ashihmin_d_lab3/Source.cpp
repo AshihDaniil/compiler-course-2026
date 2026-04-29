@@ -28,7 +28,8 @@ public:
         unsigned AddOp, SubOp, RegWidth;
 
         // Проверяем, является ли инструкция таргетом для замены
-        if (!lookupOpcodeInfo(MII->getOpcode(), DeltaAccum, AddOp, SubOp, RegWidth)) {
+        if (!lookupOpcodeInfo(MII->getOpcode(), DeltaAccum, AddOp, SubOp,
+                              RegWidth)) {
           ++MII;
           continue;
         }
@@ -36,7 +37,7 @@ public:
         Register CurrentReg = MII->getOperand(0).getReg();
         DebugLoc DL = MII->getDebugLoc();
         auto SequenceHead = MII;
-        
+
         SmallVector<MachineInstr *, 8> SequenceToProcess;
         int TotalSum = 0;
 
@@ -46,7 +47,7 @@ public:
           unsigned TmpA, TmpS, TmpW;
           if (lookupOpcodeInfo(MII->getOpcode(), LocalVal, TmpA, TmpS, TmpW) &&
               MII->getOperand(0).getReg() == CurrentReg && TmpW == RegWidth) {
-            
+
             TotalSum += LocalVal;
             SequenceToProcess.push_back(&*MII);
             ++MII;
@@ -66,7 +67,7 @@ public:
                 .addImm(Immediate)
                 .addReg(X86::EFLAGS, RegState::Define | RegState::Implicit);
           }
-          
+
           // Удаляем старые инструкции в любом случае (даже если TotalSum == 0)
           for (auto *Inst : SequenceToProcess) {
             Inst->eraseFromParent();
@@ -80,17 +81,59 @@ public:
 
 private:
   // Маппинг инструкций X86
-  bool lookupOpcodeInfo(unsigned Op, int &Val, unsigned &A, unsigned &S, unsigned &W) const {
+  bool lookupOpcodeInfo(unsigned Op, int &Val, unsigned &A, unsigned &S,
+                        unsigned &W) const {
     switch (Op) {
-      case X86::INC8r:  Val = 1;  A = X86::ADD8ri;  S = X86::SUB8ri;  W = 8;  return true;
-      case X86::DEC8r:  Val = -1; A = X86::ADD8ri;  S = X86::SUB8ri;  W = 8;  return true;
-      case X86::INC16r: Val = 1;  A = X86::ADD16ri; S = X86::SUB16ri; W = 16; return true;
-      case X86::DEC16r: Val = -1; A = X86::ADD16ri; S = X86::SUB16ri; W = 16; return true;
-      case X86::INC32r: Val = 1;  A = X86::ADD32ri; S = X86::SUB32ri; W = 32; return true;
-      case X86::DEC32r: Val = -1; A = X86::ADD32ri; S = X86::SUB32ri; W = 32; return true;
-      case X86::INC64r: Val = 1;  A = X86::ADD64ri32; S = X86::SUB64ri32; W = 64; return true;
-      case X86::DEC64r: Val = -1; A = X86::ADD64ri32; S = X86::SUB64ri32; W = 64; return true;
-      default: return false;
+    case X86::INC8r:
+      Val = 1;
+      A = X86::ADD8ri;
+      S = X86::SUB8ri;
+      W = 8;
+      return true;
+    case X86::DEC8r:
+      Val = -1;
+      A = X86::ADD8ri;
+      S = X86::SUB8ri;
+      W = 8;
+      return true;
+    case X86::INC16r:
+      Val = 1;
+      A = X86::ADD16ri;
+      S = X86::SUB16ri;
+      W = 16;
+      return true;
+    case X86::DEC16r:
+      Val = -1;
+      A = X86::ADD16ri;
+      S = X86::SUB16ri;
+      W = 16;
+      return true;
+    case X86::INC32r:
+      Val = 1;
+      A = X86::ADD32ri;
+      S = X86::SUB32ri;
+      W = 32;
+      return true;
+    case X86::DEC32r:
+      Val = -1;
+      A = X86::ADD32ri;
+      S = X86::SUB32ri;
+      W = 32;
+      return true;
+    case X86::INC64r:
+      Val = 1;
+      A = X86::ADD64ri32;
+      S = X86::SUB64ri32;
+      W = 64;
+      return true;
+    case X86::DEC64r:
+      Val = -1;
+      A = X86::ADD64ri32;
+      S = X86::SUB64ri32;
+      W = 64;
+      return true;
+    default:
+      return false;
     }
   }
 };
@@ -98,4 +141,5 @@ private:
 char ashihmin_d_lab3::ID = 0;
 } // namespace
 
-static RegisterPass<ashihmin_d_lab3> X("ashihmin_d_lab3", "ashihmin_d_lab3 pass", false, false);
+static RegisterPass<ashihmin_d_lab3> X("ashihmin_d_lab3",
+                                       "ashihmin_d_lab3 pass", false, false);
