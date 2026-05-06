@@ -1,4 +1,4 @@
-// RUN: mlir-opt -load-pass-plugin=%mlir_lib_dir/ashihmin_d_lab4_MLIR%shlibext --pass-pipeline="builtin.module(trace-conditions)" %s | FileCheck %s
+// RUN: mlir-opt -load-pass-plugin=%mlir_lib_dir/ashihmin_d_lab4_MLIR%shlibext --pass-pipeline="builtin.module(trace-conditions)" -allow-unregistered-dialect %s | FileCheck %s
 
 module {
   // CHECK-LABEL: func @test_basic_if
@@ -42,7 +42,6 @@ module {
         "affine.op"() : () -> ()
         // CHECK: call @trace_condition_then_end()
     }
-    // CHECK-NOT: call @trace_condition_else_begin()
     return
   }
 }

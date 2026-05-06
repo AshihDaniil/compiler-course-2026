@@ -16,6 +16,11 @@ public:
     return "Inserts trace calls into if-conditions";
   }
 
+  void getDependentDialects(DialectRegistry &registry) const override {
+    registry
+        .insert<scf::SCFDialect, affine::AffineDialect, func::FuncDialect>();
+  }
+
   void ensureDeclaration(ModuleOp module, StringRef name) {
     if (module.lookupSymbol<func::FuncOp>(name))
       return;
