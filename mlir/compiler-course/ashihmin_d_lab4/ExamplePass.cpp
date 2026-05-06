@@ -13,7 +13,7 @@ class ConditionTracingPass
 public:
   StringRef getArgument() const final { return "trace-conditions"; }
   StringRef getDescription() const final {
-    return "Inserts trace calls into if-conditions";
+    return "Adds tracing calls to condition branches";
   }
 
   void getDependentDialects(DialectRegistry &registry) const override {
@@ -21,58 +21,52 @@ public:
         .insert<scf::SCFDialect, affine::AffineDialect, func::FuncDialect>();
   }
 
-  void ensureDeclaration(ModuleOp module, StringRef name) {
-    if (module.lookupSymbol<func::FuncOp>(name))
-      return;
-    OpBuilder builder(module.getBodyRegion());
-    builder
-        .create<func::FuncOp>(module.getLoc(), name,
-                              builder.getFunctionType({}, {}))
-        .setPrivate();
-  }
-
-  void instrumentRegion(Region &region, StringRef beginFunc, StringRef endFunc,
-                        OpBuilder &builder) {
-    if (region.empty())
-      return;
-    Block &block = region.front();
-
-    builder.setInsertionPointToStart(&block);
-    builder.create<func::CallOp>(builder.getUnknownLoc(), beginFunc,
-                                 TypeRange{});
-
-    Operation *terminator = block.getTerminator();
-    if (terminator) {
-      builder.setInsertionPoint(terminator);
-    } else {
-      builder.setInsertionPointToEnd(&block);
-    }
-    builder.create<func::CallOp>(builder.getUnknownLoc(), endFunc, TypeRange{});
-  }
-
   void runOnOperation() override {
     ModuleOp module = getOperation();
-    OpBuilder builder(module.getContext());
+    MLIRContext *ctx = &getContext();
 
-    ensureDeclaration(module, "trace_condition_then_begin");
-    ensureDeclaration(module, "trace_condition_then_end");
-    ensureDeclaration(module, "trace_condition_else_begin");
-    ensureDeclaration(module, "trace_condition_else_end");
+    SmallVector<StringRef, 4> funcNames = {
+        "trace_condition_then_begin", "trace_condition_then_end",
+        "trace_condition_else_begin", "trace_condition_else_end"};
+
+    OpBuilder modBuilder(module.getBodyRegion());
+    for (auto name : funcNames) {
+      if (!module.lookupSymbol<func::FuncOp>(name)) {
+        modBuilder.setInsertionPointToStart(&module.getBodyRegion().front());
+        auto type = FunctionType::get(ctx, {}, {});
+        modBuilder.create<func::FuncOp>(module.getLoc(), name, type)
+            .setPrivate();
+      }
+    }
 
     module.walk([&](Operation *op) {
-      if (auto scfIf = dyn_cast<scf::IfOp>(op)) {
-        instrumentRegion(scfIf.getThenRegion(), "trace_condition_then_begin",
-                         "trace_condition_then_end", builder);
-        if (!scfIf.getElseRegion().empty())
-          instrumentRegion(scfIf.getElseRegion(), "trace_condition_else_begin",
-                           "trace_condition_else_end", builder);
-      } else if (auto affineIf = dyn_cast<affine::AffineIfOp>(op)) {
-        instrumentRegion(affineIf.getThenRegion(), "trace_condition_then_begin",
-                         "trace_condition_then_end", builder);
-        if (!affineIf.getElseRegion().empty())
-          instrumentRegion(affineIf.getElseRegion(),
-                           "trace_condition_else_begin",
-                           "trace_condition_else_end", builder);
+      auto processBranch = [&](Region &region, StringRef startNm,
+                               StringRef endNm) {
+        if (region.empty())
+          return;
+        Block &block = region.front();
+        OpBuilder builder(ctx);
+
+        builder.setInsertionPointToStart(&block);
+        builder.create<func::CallOp>(op->getLoc(), startNm, TypeRange{});
+
+        Operation *term = block.getTerminator();
+        builder.setInsertionPoint(term);
+        builder.create<func::CallOp>(op->getLoc(), endNm, TypeRange{});
+      };
+
+      if (auto ifOp = dyn_cast<scf::IfOp>(op)) {
+        processBranch(ifOp.getThenRegion(), "trace_condition_then_begin",
+                      "trace_condition_then_end");
+        if (!ifOp.getElseRegion().empty())
+          processBranch(ifOp.getElseRegion(), "trace_condition_else_begin",
+                        "trace_condition_else_end");
+      } else if (auto affIf = dyn_cast<affine::AffineIfOp>(op)) {
+        processBranch(affIf.getThenRegion(), "trace_condition_then_begin",
+                      "trace_condition_then_end");
+        if (!affIf.getElseRegion().empty())
+          processBranch(affIf.getElseRegion(), "trace_condition_else_begin",
+                        "trace_condition_else_end");
       }
     });
   }
