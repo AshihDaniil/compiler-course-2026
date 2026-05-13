@@ -11,8 +11,6 @@ namespace {
 class ConditionTracingPass
     : public PassWrapper<ConditionTracingPass, OperationPass<ModuleOp>> {
 public:
-  MLIR_DEFINE_EXPLICIT_TYPE_ID(ConditionTracingPass)
-
   StringRef getArgument() const final { return "trace-conditions"; }
   StringRef getDescription() const final {
     return "Adds tracing calls to condition branches (ashihmin_d_lab4)";
@@ -75,6 +73,9 @@ public:
   }
 };
 } // namespace
+
+MLIR_DECLARE_EXPLICIT_TYPE_ID(ConditionTracingPass)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(ConditionTracingPass)
 
 mlir::PassPluginLibraryInfo getConditionTracingPassPluginInfo() {
   return {MLIR_PLUGIN_API_VERSION, "ConditionTracingPass", "1.0",
