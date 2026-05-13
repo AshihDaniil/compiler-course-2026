@@ -11,9 +11,11 @@ namespace {
 class ConditionTracingPass
     : public PassWrapper<ConditionTracingPass, OperationPass<ModuleOp>> {
 public:
+  MLIR_DEFINE_EXPLICIT_TYPE_ID(ConditionTracingPass)
+
   StringRef getArgument() const final { return "trace-conditions"; }
   StringRef getDescription() const final {
-    return "Adds tracing calls to condition branches";
+    return "Adds tracing calls to condition branches (ashihmin_d_lab4)";
   }
 
   void getDependentDialects(DialectRegistry &registry) const override {
@@ -23,7 +25,7 @@ public:
 
   void runOnOperation() override {
     ModuleOp module = getOperation();
-    MLIRContext *ctx = &getContext();
+    auto *ctx = module.getContext();
 
     SmallVector<StringRef, 4> funcNames = {
         "trace_condition_then_begin", "trace_condition_then_end",
@@ -32,7 +34,7 @@ public:
     OpBuilder modBuilder(module.getBodyRegion());
     for (auto name : funcNames) {
       if (!module.lookupSymbol<func::FuncOp>(name)) {
-        modBuilder.setInsertionPointToStart(&module.getBodyRegion().front());
+        modBuilder.setInsertionPointToStart(module.getBody());
         auto type = FunctionType::get(ctx, {}, {});
         modBuilder.create<func::FuncOp>(module.getLoc(), name, type)
             .setPrivate();
@@ -40,10 +42,11 @@ public:
     }
 
     module.walk([&](Operation *op) {
-      auto processBranch = [&](Region &region, StringRef startNm,
+      auto processRegion = [&](Region &region, StringRef startNm,
                                StringRef endNm) {
         if (region.empty())
           return;
+
         Block &block = region.front();
         OpBuilder builder(ctx);
 
@@ -56,25 +59,22 @@ public:
       };
 
       if (auto ifOp = dyn_cast<scf::IfOp>(op)) {
-        processBranch(ifOp.getThenRegion(), "trace_condition_then_begin",
+        processRegion(ifOp.getThenRegion(), "trace_condition_then_begin",
                       "trace_condition_then_end");
         if (!ifOp.getElseRegion().empty())
-          processBranch(ifOp.getElseRegion(), "trace_condition_else_begin",
+          processRegion(ifOp.getElseRegion(), "trace_condition_else_begin",
                         "trace_condition_else_end");
       } else if (auto affIf = dyn_cast<affine::AffineIfOp>(op)) {
-        processBranch(affIf.getThenRegion(), "trace_condition_then_begin",
+        processRegion(affIf.getThenRegion(), "trace_condition_then_begin",
                       "trace_condition_then_end");
         if (!affIf.getElseRegion().empty())
-          processBranch(affIf.getElseRegion(), "trace_condition_else_begin",
+          processRegion(affIf.getElseRegion(), "trace_condition_else_begin",
                         "trace_condition_else_end");
       }
     });
   }
 };
 } // namespace
-
-MLIR_DECLARE_EXPLICIT_TYPE_ID(ConditionTracingPass)
-MLIR_DEFINE_EXPLICIT_TYPE_ID(ConditionTracingPass)
 
 mlir::PassPluginLibraryInfo getConditionTracingPassPluginInfo() {
   return {MLIR_PLUGIN_API_VERSION, "ConditionTracingPass", "1.0",

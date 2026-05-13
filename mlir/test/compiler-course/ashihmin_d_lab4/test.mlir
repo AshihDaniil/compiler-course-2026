@@ -2,15 +2,14 @@
 
 // CHECK-LABEL: func.func @test_scf_if
 func.func @test_scf_if(%cond: i1) {
-  // CHECK: scf.if %arg0 {
-  // CHECK-NEXT: call @trace_condition_then_begin()
+  // CHECK: scf.if {{.*}} {
+  // CHECK-NEXT: func.call @trace_condition_then_begin() : () -> ()
   // CHECK-NEXT: "test.op1"()
-  // CHECK-NEXT: call @trace_condition_then_end()
-  // CHECK-NEXT: scf.yield
+  // CHECK-NEXT: func.call @trace_condition_then_end() : () -> ()
   // CHECK-NEXT: } else {
-  // CHECK-NEXT: call @trace_condition_else_begin()
+  // CHECK-NEXT: func.call @trace_condition_else_begin() : () -> ()
   // CHECK-NEXT: "test.op2"()
-  // CHECK-NEXT: call @trace_condition_else_end()
+  // CHECK-NEXT: func.call @trace_condition_else_end() : () -> ()
   scf.if %cond {
     "test.op1"() : () -> ()
     scf.yield
@@ -23,26 +22,32 @@ func.func @test_scf_if(%cond: i1) {
 
 // CHECK-LABEL: func.func @test_empty_then
 func.func @test_empty_then(%cond: i1) {
-  // CHECK: scf.if %arg0 {
-  // CHECK-NEXT: call @trace_condition_then_begin()
-  // CHECK-NEXT: call @trace_condition_then_end()
-  // CHECK-NEXT: scf.yield
+  // CHECK: scf.if {{.*}} {
+  // CHECK-NEXT: func.call @trace_condition_then_begin() : () -> ()
+  // CHECK-NEXT: func.call @trace_condition_then_end() : () -> ()
+  // CHECK-NEXT: }
   scf.if %cond {
     scf.yield
   }
   return
 }
 
+#set = affine_set<(d0) : (d0 - 1 >= 0)>
+
 // CHECK-LABEL: func.func @test_affine_if
 func.func @test_affine_if(%idx: index) {
-  // CHECK: affine.if
-  // CHECK-NEXT: call @trace_condition_then_begin()
-  affine.if affine_set<(d0) : (d0 - 1 >= 0)>(%idx) {
+  // CHECK: affine.if {{.*}} {
+  // CHECK-NEXT: func.call @trace_condition_then_begin() : () -> ()
+  // CHECK-NEXT: "test.affine_op"()
+  // CHECK-NEXT: func.call @trace_condition_then_end() : () -> ()
+  // CHECK-NEXT: }
+  affine.if #set(%idx) {
     "test.affine_op"() : () -> ()
   }
-  // CHECK: call @trace_condition_then_end()
   return
 }
 
-// CHECK: func.func private @trace_condition_then_begin()
-// CHECK: func.func private @trace_condition_then_end()
+// CHECK-DAG: func.func private @trace_condition_then_begin()
+// CHECK-DAG: func.func private @trace_condition_then_end()
+// CHECK-DAG: func.func private @trace_condition_else_begin()
+// CHECK-DAG: func.func private @trace_condition_else_end()
